@@ -11,6 +11,13 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 
 public class Main {
@@ -19,6 +26,7 @@ public class Main {
         Configurator.setLevel(logger.getName(), Level.INFO);
     }
     public static void main(String[] args) {
+        ExecutorService executor = new ThreadPoolExecutor(10, 20, 60, TimeUnit.SECONDS, new SynchronousQueue<>(), new ThreadPoolExecutor.DiscardPolicy());
         try (ServerSocket serverSocket = new ServerSocket(0)) {
             logger.info("Сервер запущен. Ожидание подключений..."+serverSocket.getLocalPort());
 
@@ -29,14 +37,17 @@ public class Main {
                 logger.info("Игроки подключены. Запуск игры...");
 
                 GameThread gameThread = new GameThread(player1Socket, player2Socket);
-                gameThread.start();
+                executor.submit(gameThread);
             }
         } catch (IOException e) {
             logger.error(e);
         }
+        finally {
+            executor.shutdown();
+        }
     }
 
-    private static class GameThread extends Thread {
+    private static class GameThread implements Runnable {
         private final Socket player1Socket;
         private final Socket player2Socket;
 
